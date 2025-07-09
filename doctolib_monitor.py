@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 import json
 import urllib.parse
 import urllib.request
+import gzip
 import time
 import random
 
@@ -13,7 +14,7 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 # Your doctor-specific URLs and settings
 BOOKING_URL = 'https://www.doctolib.de/facharzt-fur-humangenetik/berlin/annechristin-meiner/booking/availabilities?specialityId=1305&telehealth=false&placeId=practice-207074&insuranceSectorEnabled=true&insuranceSector=public&isNewPatient=false&isNewPatientBlocked=false&motiveIds[]=5918040&pid=practice-207074&bookingFunnelSource=profile'
 AVAILABILITIES_URL = 'https://www.doctolib.de/availabilities.json?visit_motive_ids=5918040&agenda_ids=529392&practice_ids=207074&insurance_sector=public&telehealth=false&start_date=2025-07-09&limit=5'
-APPOINTMENT_NAME = 'Dr. Hassas'
+APPOINTMENT_NAME = 'Dr. Meiner'
 MOVE_BOOKING_URL = None
 UPCOMING_DAYS = 15
 MAX_DATETIME_IN_FUTURE = datetime.today() + timedelta(days = UPCOMING_DAYS)
@@ -75,17 +76,42 @@ for key, value in headers.items():
     request.add_header(key, value)
 
 try:
+    print("Sending request to Doctolib...")
     response_obj = urllib.request.urlopen(request)
     response_data = response_obj.read()
     
-    # Check if response is gzip compressed
-    if response_obj.headers.get('Content-Encoding') == 'gzip':
-        import gzip
-        response_data = gzip.decompress(response_data)
+    print(f"Response status: {response_obj.getcode()}")
+    print(f"Content-Encoding: {response_obj.headers.get('Content-Encoding', 'none')}")
+    print(f"Content-Type: {response_obj.headers.get('Content-Type', 'none')}")
     
-    # Decode to string
-    response = response_data.decode('utf-8')
-    print("Successfully got response from API")
+    # Check if response is gzip compressed and handle accordingly
+    if response_obj.headers.get('Content-Encoding') == 'gzip':
+        print("Response is gzip compressed, decompressing...")
+        try:
+            response_data = gzip.decompress(response_data)
+            print("Successfully decompressed gzip data")
+        except Exception as gzip_error:
+            print(f"Error decompressing gzip: {gzip_error}")
+            exit()
+    
+    # Try different encodings to decode the response
+    response = None
+    for encoding in ['utf-8', 'iso-8859-1', 'cp1252']:
+        try:
+            response = response_data.decode(encoding)
+            print(f"Successfully decoded response using {encoding}")
+            break
+        except UnicodeDecodeError as decode_error:
+            print(f"Failed to decode with {encoding}: {decode_error}")
+            continue
+    
+    if response is None:
+        print("Failed to decode response with any encoding")
+        print(f"Raw response bytes (first 100): {response_data[:100]}")
+        exit()
+    
+    print("Successfully got and decoded response from API")
+    
 except urllib.error.HTTPError as e:
     print(f"HTTP Error {e.code}: {e.reason}")
     if e.code == 403:
@@ -95,13 +121,16 @@ except urllib.error.HTTPError as e:
     exit()
 except Exception as e:
     print(f"Error making API request: {e}")
+    print(f"Error type: {type(e).__name__}")
     exit()
 
 try:
     availabilities = json.loads(response)
     print(f"Found {availabilities.get('total', 0)} total appointments")
+    print(f"JSON keys: {list(availabilities.keys())}")
 except Exception as e:
     print(f"Error parsing JSON response: {e}")
+    print(f"Response content (first 500 chars): {response[:500]}")
     exit()
 
 slotsInNearFuture = availabilities['total']
