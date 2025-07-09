@@ -26,4 +26,4 @@ jobs:
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
         python doctolib_monitor.py
-        python doctolib120test.py
+       
