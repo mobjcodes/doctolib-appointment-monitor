@@ -17,15 +17,14 @@ AVAILABILITIES_URL = 'https://www.doctolib.de/availabilities.json?visit_motive_i
 APPOINTMENT_NAME = 'Dr. Hassas'
 MOVE_BOOKING_URL = None
 
-# Updated settings - work within API limits but check multiple ranges
-UPCOMING_DAYS = 15  # Maximum per API call
-TOTAL_DAYS_TO_MONITOR = 45  # Total range we want to monitor
-MAX_DATETIME_IN_FUTURE = datetime.today() + timedelta(days = TOTAL_DAYS_TO_MONITOR)
+# Updated settings - no artificial 15-day limit
+UPCOMING_DAYS = 60  # Check up to 60 days (2 months) for specialist appointments
+MAX_DATETIME_IN_FUTURE = datetime.today() + timedelta(days = UPCOMING_DAYS)
 NOTIFY_HOURLY = False
 
 print("Script is running...")
 print(f"Checking appointments for: {BOOKING_URL}")
-print(f"Monitoring appointments up to {TOTAL_DAYS_TO_MONITOR} days ahead")
+print(f"Monitoring appointments up to {UPCOMING_DAYS} days ahead")
 
 if not (
     TELEGRAM_BOT_TOKEN
@@ -35,6 +34,9 @@ if not (
     ):
     print("Script exiting - missing required variables")
     exit()
+
+# REMOVED: The artificial 15-day limit check
+# Old code: or UPCOMING_DAYS > 15: exit()
 
 print("Making request to Doctolib API...")
 
@@ -158,15 +160,16 @@ except Exception as e:
     print(f"Response content (first 500 chars): {response[:500]}")
     exit()
 
-slotInNearFutureExist = total_appointments > 0
+slotsInNearFuture = availabilities['total']
+slotInNearFutureExist = slotsInNearFuture > 0
 
-# Updated logic - now checks for ANY available appointments from all chunks
+# Updated logic - now checks for ANY available appointments
 if slotInNearFutureExist:
-    print(f"Found {total_appointments} total appointments across all date ranges!")
+    print(f"Found {slotsInNearFuture} total appointments!")
     
     # Check the dates of available appointments
     earliest_date = None
-    for day in all_availabilities:
+    for day in availabilities['availabilities']:
         if len(day['slots']) > 0:
             appointment_date = datetime.fromisoformat(day['date']).replace(tzinfo=None)
             if earliest_date is None or appointment_date < earliest_date:
@@ -188,7 +191,7 @@ isOnTheHour = datetime.now().minute == 0
 isHourlyNotificationDue = isOnTheHour and NOTIFY_HOURLY
 
 if not (appointmentExists or isHourlyNotificationDue):
-    print("No appointments found across all date ranges - exiting")
+    print("No appointments found - exiting")
     exit()
 
 print("Appointments found! Sending notification...")
@@ -199,22 +202,23 @@ if APPOINTMENT_NAME:
     message += '\n'
 
 if appointmentExists:
-    pluralSuffix = 's' if total_appointments > 1 else ''
+    pluralSuffix = 's' if slotsInNearFuture > 1 else ''
     if earliest_date:
         days_away = (earliest_date - datetime.today()).days
-        message += f'🔥 {total_appointments} slot{pluralSuffix} available!'
+        message += f'🔥 {slotsInNearFuture} slot{pluralSuffix} available!'
         message += f'\n📅 Earliest: {earliest_date.strftime("%B %d, %Y")} ({days_away} days away)'
     else:
-        message += f'🔥 {total_appointments} slot{pluralSuffix} available!'
+        message += f'🔥 {slotsInNearFuture} slot{pluralSuffix} available!'
     message += '\n'
     if MOVE_BOOKING_URL:
         message += f'<a href="{MOVE_BOOKING_URL}">🚚 Move existing booking</a>.'
         message += '\n'
 
 if isHourlyNotificationDue:
-    # For hourly notifications, we'd need to find the next slot beyond our range
-    # For now, we'll skip this feature with multiple API calls
-    message += f'🐌 Hourly check completed.'
+    nextSlotDatetimeIso8601 = availabilities['next_slot']
+    nextSlotDate = (datetime.fromisoformat(nextSlotDatetimeIso8601)
+                                .strftime('%d %B %Y'))
+    message += f'🐌 slot <i>{nextSlotDate}</i>.'
     message += '\n'
 
 message += f'Book now on <a href="{BOOKING_URL}">doctolib.de</a>.'
