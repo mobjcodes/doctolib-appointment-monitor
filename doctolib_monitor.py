@@ -14,7 +14,7 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 # Your doctor-specific URLs and settings
 BOOKING_URL = 'https://www.doctolib.de/facharzt-fur-humangenetik/berlin/annechristin-meiner/booking/availabilities?specialityId=1305&telehealth=false&placeId=practice-207074&insuranceSectorEnabled=true&insuranceSector=public&isNewPatient=false&isNewPatientBlocked=false&motiveIds[]=5918040&pid=practice-207074&bookingFunnelSource=profile'
 AVAILABILITIES_URL = 'https://www.doctolib.de/availabilities.json?visit_motive_ids=5918040&agenda_ids=529392&practice_ids=207074&insurance_sector=public&telehealth=false&start_date=2025-07-09&limit=5'
-APPOINTMENT_NAME = 'Dr. Meiner'
+APPOINTMENT_NAME = 'Dr. Hassas'
 MOVE_BOOKING_URL = None
 UPCOMING_DAYS = 15
 MAX_DATETIME_IN_FUTURE = datetime.today() + timedelta(days = UPCOMING_DAYS)
@@ -84,8 +84,9 @@ try:
     print(f"Content-Encoding: {response_obj.headers.get('Content-Encoding', 'none')}")
     print(f"Content-Type: {response_obj.headers.get('Content-Type', 'none')}")
     
-    # Check if response is gzip compressed and handle accordingly
-    if response_obj.headers.get('Content-Encoding') == 'gzip':
+    # Check if response is compressed and handle accordingly
+    content_encoding = response_obj.headers.get('Content-Encoding', 'none')
+    if content_encoding == 'gzip':
         print("Response is gzip compressed, decompressing...")
         try:
             response_data = gzip.decompress(response_data)
@@ -93,6 +94,26 @@ try:
         except Exception as gzip_error:
             print(f"Error decompressing gzip: {gzip_error}")
             exit()
+    elif content_encoding == 'br':
+        print("Response is Brotli compressed, decompressing...")
+        try:
+            import brotli
+            response_data = brotli.decompress(response_data)
+            print("Successfully decompressed Brotli data")
+        except ImportError:
+            print("Brotli library not available. Installing...")
+            import subprocess
+            import sys
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "brotli"])
+            import brotli
+            response_data = brotli.decompress(response_data)
+            print("Successfully decompressed Brotli data")
+        except Exception as brotli_error:
+            print(f"Error decompressing Brotli: {brotli_error}")
+            exit()
+    elif content_encoding not in ['none', 'identity']:
+        print(f"Unknown compression type: {content_encoding}")
+        exit()
     
     # Try different encodings to decode the response
     response = None
