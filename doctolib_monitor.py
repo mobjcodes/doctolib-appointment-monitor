@@ -3,12 +3,14 @@ from datetime import date, datetime, timedelta
 import json
 import urllib.parse
 import urllib.request
+import time
+import random
 
 # Get sensitive data from environment variables (GitHub Secrets)
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-# Your doctor-specific URLs and settings (these can stay in the code)
+# Your doctor-specific URLs and settings
 BOOKING_URL = 'https://www.doctolib.de/facharzt-fur-humangenetik/berlin/annechristin-meiner/booking/availabilities?specialityId=1305&telehealth=false&placeId=practice-207074&insuranceSectorEnabled=true&insuranceSector=public&isNewPatient=false&isNewPatientBlocked=false&motiveIds[]=5918040&pid=practice-207074&bookingFunnelSource=profile'
 AVAILABILITIES_URL = 'https://www.doctolib.de/availabilities.json?visit_motive_ids=5918040&agenda_ids=529392&practice_ids=207074&insurance_sector=public&telehealth=false&start_date=2025-07-09&limit=5'
 APPOINTMENT_NAME = 'Dr. Meiner'
@@ -31,6 +33,9 @@ if not (
 
 print("Making request to Doctolib API...")
 
+# Add random delay to appear more human-like
+time.sleep(random.uniform(1, 3))
+
 urlParts = urllib.parse.urlparse(AVAILABILITIES_URL)
 query = dict(urllib.parse.parse_qsl(urlParts.query))
 query.update({
@@ -43,20 +48,42 @@ newAvailabilitiesUrl = (urlParts
 
 print(f"API URL: {newAvailabilitiesUrl}")
 
-request = (urllib
-                .request
-                .Request(newAvailabilitiesUrl))
-request.add_header(
-    'User-Agent',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
-)
+# Create request with enhanced headers to mimic a real browser
+request = urllib.request.Request(newAvailabilitiesUrl)
+
+# Add comprehensive headers to look like a real browser
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Referer': 'https://www.doctolib.de/',
+    'Origin': 'https://www.doctolib.de',
+    'Connection': 'keep-alive',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'sec-ch-ua': '"Not)A;Brand";v="99", "Google Chrome";v="127", "Chromium";v="127"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'DNT': '1',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
+}
+
+for key, value in headers.items():
+    request.add_header(key, value)
 
 try:
-    response = (urllib.request
-                        .urlopen(request)
-                        .read()
-                        .decode('utf-8'))
+    response = urllib.request.urlopen(request).read().decode('utf-8')
     print("Successfully got response from API")
+except urllib.error.HTTPError as e:
+    print(f"HTTP Error {e.code}: {e.reason}")
+    if e.code == 403:
+        print("Doctolib is blocking requests from this IP address")
+        print("This commonly happens with cloud servers/GitHub Actions")
+        print("Consider using a residential VPS or running locally")
+    exit()
 except Exception as e:
     print(f"Error making API request: {e}")
     exit()
@@ -117,9 +144,7 @@ message += f'Book now on <a href="{BOOKING_URL}">doctolib.de</a>.'
 
 print(f"Message to send: {message}")
 
-urlEncodedMessage = (urllib
-                        .parse
-                        .quote(message))
+urlEncodedMessage = urllib.parse.quote(message)
 
 try:
     urllib.request.urlopen(
@@ -132,3 +157,4 @@ try:
     print("Notification sent successfully!")
 except Exception as e:
     print(f"Error sending Telegram message: {e}")
+
