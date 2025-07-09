@@ -20,7 +20,7 @@ jobs:
       with:
         python-version: '3.11'
     
-    - name: Run Dr. Hassas appointment checker
+    - name: Run Dr. Meiner appointment checker
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
