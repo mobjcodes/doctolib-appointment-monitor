@@ -14,23 +14,29 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 # Your doctor-specific URLs and settings
 BOOKING_URL = 'https://www.doctolib.de/facharzt-fur-humangenetik/berlin/annechristin-meiner/booking/availabilities?specialityId=1305&telehealth=false&placeId=practice-207074&insuranceSectorEnabled=true&insuranceSector=public&isNewPatient=false&isNewPatientBlocked=false&motiveIds[]=5918040&pid=practice-207074&bookingFunnelSource=profile'
 AVAILABILITIES_URL = 'https://www.doctolib.de/availabilities.json?visit_motive_ids=5918040&agenda_ids=529392&practice_ids=207074&insurance_sector=public&telehealth=false&start_date=2025-07-09&limit=5'
-APPOINTMENT_NAME = 'Dr. Hassas'
+APPOINTMENT_NAME = 'Dr. Annechristin Meiner'
 MOVE_BOOKING_URL = None
-UPCOMING_DAYS = 15
+
+# Updated settings - no artificial 15-day limit
+UPCOMING_DAYS = 60  # Check up to 60 days (2 months) for specialist appointments
 MAX_DATETIME_IN_FUTURE = datetime.today() + timedelta(days = UPCOMING_DAYS)
 NOTIFY_HOURLY = False
 
 print("Script is running...")
 print(f"Checking appointments for: {BOOKING_URL}")
+print(f"Monitoring appointments up to {UPCOMING_DAYS} days ahead")
 
 if not (
     TELEGRAM_BOT_TOKEN
     and TELEGRAM_CHAT_ID
     and BOOKING_URL
     and AVAILABILITIES_URL
-    ) or UPCOMING_DAYS > 15:
-    print("Script exiting - missing required variables or UPCOMING_DAYS > 15")
+    ):
+    print("Script exiting - missing required variables")
     exit()
+
+# REMOVED: The artificial 15-day limit check
+# Old code: or UPCOMING_DAYS > 15: exit()
 
 print("Making request to Doctolib API...")
 
@@ -40,7 +46,7 @@ time.sleep(random.uniform(1, 3))
 urlParts = urllib.parse.urlparse(AVAILABILITIES_URL)
 query = dict(urllib.parse.parse_qsl(urlParts.query))
 query.update({
-    'limit': UPCOMING_DAYS,
+    'limit': UPCOMING_DAYS,  # Now uses 60 instead of 15
     'start_date': date.today(),
 })
 newAvailabilitiesUrl = (urlParts
@@ -156,25 +162,36 @@ except Exception as e:
 
 slotsInNearFuture = availabilities['total']
 slotInNearFutureExist = slotsInNearFuture > 0
-earlierSlotExists = False
 
+# Updated logic - now checks for ANY available appointments
 if slotInNearFutureExist:
-    print("Checking for appointments within the specified timeframe...")
+    print(f"Found {slotsInNearFuture} total appointments!")
+    
+    # Check the dates of available appointments
+    earliest_date = None
     for day in availabilities['availabilities']:
-        if len(day['slots']) == 0:
-            continue
-        nextDatetimeIso8601 = day['date']
-        nextDatetime = (datetime.fromisoformat(nextDatetimeIso8601)
-                                .replace(tzinfo = None))
-        if nextDatetime < MAX_DATETIME_IN_FUTURE:
-            earlierSlotExists = True
-            break
+        if len(day['slots']) > 0:
+            appointment_date = datetime.fromisoformat(day['date']).replace(tzinfo=None)
+            if earliest_date is None or appointment_date < earliest_date:
+                earliest_date = appointment_date
+            print(f"Appointment available on: {appointment_date.strftime('%Y-%m-%d (%A)')}")
+    
+    if earliest_date:
+        days_away = (earliest_date - datetime.today()).days
+        print(f"Earliest appointment is {days_away} days away")
+        
+        # Send notification for ANY available appointment
+        appointmentExists = True
+    else:
+        appointmentExists = False
+else:
+    appointmentExists = False
 
 isOnTheHour = datetime.now().minute == 0
 isHourlyNotificationDue = isOnTheHour and NOTIFY_HOURLY
 
-if not (earlierSlotExists or isHourlyNotificationDue):
-    print("No appointments found within criteria - exiting")
+if not (appointmentExists or isHourlyNotificationDue):
+    print("No appointments found - exiting")
     exit()
 
 print("Appointments found! Sending notification...")
@@ -184,9 +201,14 @@ if APPOINTMENT_NAME:
     message += f'👨‍⚕️👩‍⚕️ {APPOINTMENT_NAME}'
     message += '\n'
 
-if earlierSlotExists:
+if appointmentExists:
     pluralSuffix = 's' if slotsInNearFuture > 1 else ''
-    message += f'🔥 {slotsInNearFuture} slot{pluralSuffix} within {UPCOMING_DAYS}d!'
+    if earliest_date:
+        days_away = (earliest_date - datetime.today()).days
+        message += f'🔥 {slotsInNearFuture} slot{pluralSuffix} available!'
+        message += f'\n📅 Earliest: {earliest_date.strftime("%B %d, %Y")} ({days_away} days away)'
+    else:
+        message += f'🔥 {slotsInNearFuture} slot{pluralSuffix} available!'
     message += '\n'
     if MOVE_BOOKING_URL:
         message += f'<a href="{MOVE_BOOKING_URL}">🚚 Move existing booking</a>.'
