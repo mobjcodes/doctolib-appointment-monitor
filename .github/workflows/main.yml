@@ -1,0 +1,28 @@
+name: Dr. Meiner Appointment Monitor
+
+on:
+  schedule:
+    # Runs every 5 minutes from 7 AM to 11 PM Berlin time (UTC+1)
+    # Note: GitHub Actions uses UTC, so 6-22 UTC = 7-23 Berlin time
+    - cron: '*/5 6-22 * * *'
+  workflow_dispatch: # Allows manual triggering for testing
+
+jobs:
+  check-appointments:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Run Dr. Hassas appointment checker
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        python doctolib_monitor.py
