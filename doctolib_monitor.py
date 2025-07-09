@@ -13,7 +13,7 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 # Your doctor-specific URLs and settings
 BOOKING_URL = 'https://www.doctolib.de/facharzt-fur-humangenetik/berlin/annechristin-meiner/booking/availabilities?specialityId=1305&telehealth=false&placeId=practice-207074&insuranceSectorEnabled=true&insuranceSector=public&isNewPatient=false&isNewPatientBlocked=false&motiveIds[]=5918040&pid=practice-207074&bookingFunnelSource=profile'
 AVAILABILITIES_URL = 'https://www.doctolib.de/availabilities.json?visit_motive_ids=5918040&agenda_ids=529392&practice_ids=207074&insurance_sector=public&telehealth=false&start_date=2025-07-09&limit=5'
-APPOINTMENT_NAME = 'Dr. Meiner'
+APPOINTMENT_NAME = 'Dr. Hassas'
 MOVE_BOOKING_URL = None
 UPCOMING_DAYS = 15
 MAX_DATETIME_IN_FUTURE = datetime.today() + timedelta(days = UPCOMING_DAYS)
@@ -75,7 +75,16 @@ for key, value in headers.items():
     request.add_header(key, value)
 
 try:
-    response = urllib.request.urlopen(request).read().decode('utf-8')
+    response_obj = urllib.request.urlopen(request)
+    response_data = response_obj.read()
+    
+    # Check if response is gzip compressed
+    if response_obj.headers.get('Content-Encoding') == 'gzip':
+        import gzip
+        response_data = gzip.decompress(response_data)
+    
+    # Decode to string
+    response = response_data.decode('utf-8')
     print("Successfully got response from API")
 except urllib.error.HTTPError as e:
     print(f"HTTP Error {e.code}: {e.reason}")
@@ -157,4 +166,3 @@ try:
     print("Notification sent successfully!")
 except Exception as e:
     print(f"Error sending Telegram message: {e}")
-
