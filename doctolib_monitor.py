@@ -18,7 +18,7 @@ APPOINTMENT_NAME = 'Dr. Hassas'
 MOVE_BOOKING_URL = None
 
 # Updated settings - testing actual API limit
-UPCOMING_DAYS = 30  # Test with 30 days first, then we'll adjust
+UPCOMING_DAYS = 15  # Test with 30 days first, then we'll adjust
 MAX_DATETIME_IN_FUTURE = datetime.today() + timedelta(days = UPCOMING_DAYS)
 NOTIFY_HOURLY = False
 
