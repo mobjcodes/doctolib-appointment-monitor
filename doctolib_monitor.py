@@ -14,12 +14,12 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 # Your doctor-specific URLs and settings
 BOOKING_URL = 'https://www.doctolib.de/facharzt-fur-humangenetik/berlin/annechristin-meiner/booking/availabilities?specialityId=1305&telehealth=false&placeId=practice-207074&insuranceSectorEnabled=true&insuranceSector=public&isNewPatient=false&isNewPatientBlocked=false&motiveIds[]=5918040&pid=practice-207074&bookingFunnelSource=profile'
 AVAILABILITIES_URL = 'https://www.doctolib.de/availabilities.json?visit_motive_ids=5918040&agenda_ids=529392&practice_ids=207074&insurance_sector=public&telehealth=false&start_date=2025-07-09&limit=5'
-APPOINTMENT_NAME = 'Dr. Hassas'
+APPOINTMENT_NAME = 'Dr. Annechristin Meiner'
 MOVE_BOOKING_URL = None
 
-# Updated settings - work within API limits but check multiple ranges
-UPCOMING_DAYS = 15  # Maximum per API call
-TOTAL_DAYS_TO_MONITOR = 45  # Total range we want to monitor
+# Updated settings - monitor 3 months ahead for specialist appointments
+UPCOMING_DAYS = 15  # Maximum per API call (Doctolib's limit)
+TOTAL_DAYS_TO_MONITOR = 120  # 3 months total coverage
 MAX_DATETIME_IN_FUTURE = datetime.today() + timedelta(days = TOTAL_DAYS_TO_MONITOR)
 NOTIFY_HOURLY = False
 
