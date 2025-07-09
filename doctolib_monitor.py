@@ -14,11 +14,11 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 # Your doctor-specific URLs and settings
 BOOKING_URL = 'https://www.doctolib.de/facharzt-fur-humangenetik/berlin/annechristin-meiner/booking/availabilities?specialityId=1305&telehealth=false&placeId=practice-207074&insuranceSectorEnabled=true&insuranceSector=public&isNewPatient=false&isNewPatientBlocked=false&motiveIds[]=5918040&pid=practice-207074&bookingFunnelSource=profile'
 AVAILABILITIES_URL = 'https://www.doctolib.de/availabilities.json?visit_motive_ids=5918040&agenda_ids=529392&practice_ids=207074&insurance_sector=public&telehealth=false&start_date=2025-07-09&limit=5'
-APPOINTMENT_NAME = 'Dr. Annechristin Meiner'
+APPOINTMENT_NAME = 'Dr. Hassas'
 MOVE_BOOKING_URL = None
 
-# Updated settings - no artificial 15-day limit
-UPCOMING_DAYS = 60  # Check up to 60 days (2 months) for specialist appointments
+# Updated settings - testing actual API limit
+UPCOMING_DAYS = 30  # Test with 30 days first, then we'll adjust
 MAX_DATETIME_IN_FUTURE = datetime.today() + timedelta(days = UPCOMING_DAYS)
 NOTIFY_HOURLY = False
 
